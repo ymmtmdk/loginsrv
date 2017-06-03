@@ -242,8 +242,10 @@ func (h *Handler) respondAuthenticated(w http.ResponseWriter, r *http.Request, u
 }
 
 func (h *Handler) createToken(userInfo jwt.Claims) (string, error) {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS512, userInfo)
-	return token.SignedString([]byte(h.config.JwtSecret))
+	token := jwt.NewWithClaims(jwt.SigningMethodRS256, userInfo)
+	signBytes, _ := ioutil.ReadFile("./key.pem")
+	signKey, _ := jwt.ParseRSAPrivateKeyFromPEM(signBytes)
+	return token.SignedString(signKey)
 }
 
 func (h *Handler) getToken(r *http.Request) (userInfo model.UserInfo, valid bool) {
@@ -252,8 +254,11 @@ func (h *Handler) getToken(r *http.Request) (userInfo model.UserInfo, valid bool
 		return model.UserInfo{}, false
 	}
 
+	signBytes, _ := ioutil.ReadFile("./key.pem")
+	signKey, _ := jwt.ParseRSAPrivateKeyFromPEM(signBytes)
 	token, err := jwt.ParseWithClaims(c.Value, &model.UserInfo{}, func(*jwt.Token) (interface{}, error) {
-		return []byte(h.config.JwtSecret), nil
+		return signKey, nil
+		// return []byte(h.config.JwtSecret), nil
 	})
 	if err != nil {
 		return model.UserInfo{}, false
